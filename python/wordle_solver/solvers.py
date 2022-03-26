@@ -19,7 +19,7 @@ class Solver(ABC):
         five_letter_words += ['tares']
         num_words = len(five_letter_words)
         num_bits_uncertainty = math.log(num_words, 2)
-        print('solver initialized with default corpus, num 5 letter words:', num_words)
+        print('solver initialized with default corpus, num words:', num_words)
         print('bits of info to uncover:', num_bits_uncertainty)
         return five_letter_words
 
@@ -39,25 +39,29 @@ class Solver(ABC):
         pass
 
     @abstractmethod
-    def update_pool(self, guess, outcome):
+    def reset(self):
         pass
 
 
 class EntropySolver(Solver, ABC):
-    @staticmethod
-    def calc_entropy(outcome_probabilities):
-        return - sum([p * math.log(p, 2) for p in outcome_probabilities])
+    @abstractmethod
+    def update_pool(self, guess, outcome):
+        pass
 
     @abstractmethod
     def get_entropy(self, word):
         pass
+
+    @staticmethod
+    def calc_entropy(outcome_probabilities):
+        return - sum([p * math.log(p, 2) for p in outcome_probabilities])
 
 
 class GreedyEntropySolver(EntropySolver):
     def __init__(self, corpus=None, outcomes=None, debug_log=False):
         super().__init__(corpus, outcomes, debug_log)
         # TODO private vars and methods???
-        self.pool = corpus
+        self.pool = self.corpus
         self.correct, self.present, self.present_positions, self.not_present = (None,) * 4
 
     def get_best_guess(self):
@@ -74,6 +78,9 @@ class GreedyEntropySolver(EntropySolver):
     def update_pool(self, guess, outcome):
         self.pool = self.get_possibilities(guess, outcome)
 
+    def reset(self):
+        self.pool = self.corpus
+
     def get_entropy(self, word):
         outcome_probabilities = []
         init_pool_len = len(self.pool)
@@ -85,7 +92,7 @@ class GreedyEntropySolver(EntropySolver):
                 outcome_probabilities += [outcome_probability]
                 restricted_pool.difference_update(possibilities)
         entropy = EntropySolver.calc_entropy(outcome_probabilities)
-        return entropy
+        return entropy, outcome_probabilities  # todo outcome_probabilities is for unit tests
 
     def get_possibilities(self, guess, outcome, restricted_pool=None):
         if restricted_pool is None:
