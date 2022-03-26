@@ -12,7 +12,6 @@ class Solver(ABC):
 
     @staticmethod
     def default_corpus():
-        # corpus_name = 'five_letter_words' # TODO
         five_letter_words = [w for w in english_words_lower_alpha_set if len(w) == 5 and w.isalpha()]
         with open('./data/wordle_possible_answers.txt', 'r') as f:
             wordle_official_list = [line.strip() for line in f.readlines()]
@@ -70,7 +69,7 @@ class GreedyEntropySolver(EntropySolver):
             if self.debug_log:
                 print(f'{idx}/{len(self.pool) - 1}', word, entropy)
         best_guess = max(entropies, key=entropies.get)
-        return best_guess, entropies
+        return best_guess, entropies  # todo are entropies actually needed
 
     def update_pool(self, guess, outcome):
         self.pool = self.get_possibilities(guess, outcome)
@@ -78,23 +77,22 @@ class GreedyEntropySolver(EntropySolver):
     def get_entropy(self, word):
         outcome_probabilities = []
         init_pool_len = len(self.pool)
-        pool = set(self.pool)
+        restricted_pool = set(self.pool)
         for outcome in self.outcomes:
-            possibilities = self.get_possibilities(word, outcome)
+            possibilities = self.get_possibilities(word, outcome, restricted_pool)
             if possibilities:
                 outcome_probability = len(possibilities) / init_pool_len
                 outcome_probabilities += [outcome_probability]
-                pool.difference_update(possibilities)
+                restricted_pool.difference_update(possibilities)
         entropy = EntropySolver.calc_entropy(outcome_probabilities)
-        # TODO put in unit test
-        assert entropy <= EntropySolver.calc_entropy([1 / len(self.outcomes)] * len(self.outcomes)), \
-            f'entropy out of range: {entropy}'
-        return entropy, outcome_probabilities  # outcome_probabilities is for unit tests
+        return entropy
 
-    def get_possibilities(self, guess, outcome):
+    def get_possibilities(self, guess, outcome, restricted_pool=None):
+        if restricted_pool is None:
+            restricted_pool = self.pool
         self.correct, self.present, self.present_positions, self.not_present = \
             GreedyEntropySolver.parse_outcome(guess, outcome)
-        possibilities = self.get_init_possibilities()
+        possibilities = self.get_init_possibilities(restricted_pool)
         for word in list(possibilities.keys()):
             remaining_letters = possibilities[word]
             if not self.word_matches_present(remaining_letters) or \
@@ -120,9 +118,9 @@ class GreedyEntropySolver(EntropySolver):
                 present_positions += [None]
         return correct, present, present_positions, not_present
 
-    def get_init_possibilities(self):
+    def get_init_possibilities(self, restricted_pool):
         possibilities = {}
-        for word in self.pool:
+        for word in restricted_pool:
             matches, remaining_letters = self.word_matches_correct_and_present_positions(word)
             if matches:
                 possibilities[word] = remaining_letters
