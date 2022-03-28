@@ -1,4 +1,5 @@
 import pickle
+import os
 import matplotlib.pyplot as plt
 from .wordle import Wordle
 from .solvers import GreedyEntropySolver
@@ -8,11 +9,13 @@ class Runner:
     def __init__(self, corpus_name='five_letter_words', wordle=None, solver=None, debug_log=True):
         self.wordle = wordle if wordle else Wordle()
         self.solver = solver if solver else GreedyEntropySolver(debug_log=debug_log)
-        self.init_best_guess = self.get_init_best_guess()
         self.debug_log = debug_log
         self.entropies_file_prefix = f'./entropies/{corpus_name}'
+        if not os.path.isdir(self.entropies_file_prefix):
+            os.mkdir(self.entropies_file_prefix)
         self.init_entropies_file = f'{self.entropies_file_prefix}/init_entropies.pickle'
         self.game_entropies_file = f'{self.entropies_file_prefix}/game_entropies.pickle'
+        self.init_best_guess = self.get_init_best_guess()
 
     def get_init_best_guess(self):
         try:
@@ -28,18 +31,19 @@ class Runner:
         return init_best_guess
 
     def play_all(self):
-        num_tries = {}
+        nums_of_tries = {}
         entropies = {}
         target = self.wordle.new_game()
         while target is not None:
             # init_best_guess obtained previously over the whole corpus, does not change with target
+            self.solver.reset()
             best_guess = self.init_best_guess
             guess_is_successful = False
             while not guess_is_successful:
                 guess_is_successful, outcome = self.wordle.guess(best_guess)
                 print('TARGET: ', target, '| GUESS: ', best_guess, '| OUTCOME: ', outcome)
                 if guess_is_successful:
-                    num_tries[target] = self.wordle.num_guesses
+                    nums_of_tries[target] = self.wordle.num_guesses
                     print('GOT IT!: ', self.wordle.num_guesses, 'tries')
                     break  # not super necessary?
                 self.solver.update_pool(best_guess, outcome)
@@ -52,10 +56,10 @@ class Runner:
             target = self.wordle.new_game(debug_log=True)
         with open(self.game_entropies_file, 'wb+') as f:
             pickle.dump(entropies, f)
-        print('mean num tries', sum(num_tries.values()) / len(num_tries.values()))
-        print('max, min num tries', max(num_tries.values()), min(num_tries.values()))
-        plt.hist(num_tries.values(), bins=range(1, max(num_tries.values()) + 2))
-        return num_tries, entropies
+        print('mean num tries', sum(nums_of_tries.values()) / len(nums_of_tries.values()))
+        print('max, min num tries', max(nums_of_tries.values()), min(nums_of_tries.values()))
+        plt.hist(nums_of_tries.values(), bins=range(1, max(nums_of_tries.values()) + 2))
+        return nums_of_tries
 
     def load_or_calculate_entropies(self, guess, outcome):
         file_name = f'{self.entropies_file_prefix}/{guess}_{"".join([str(o) for o in outcome])}.pickle'
