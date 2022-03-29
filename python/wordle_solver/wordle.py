@@ -4,18 +4,22 @@ from .solvers import Solver
 
 
 class Wordle:
-    def __init__(self, corpus=None):
+    def __init__(self, corpus=None, seed=None, debug_log=False):
         self.corpus = corpus.copy() if corpus else Solver.default_corpus()
         self.curr_word = None
         self.num_guesses = 0
+        self.seed = seed
+        self.debug_log = debug_log
 
-    def new_game(self, debug_log=False):
+    def new_game(self):
         if not self.corpus:
             return None
+        if self.seed is not None:
+            random.seed(self.seed)
         self.curr_word = random.choice(self.corpus)
         self.num_guesses = 0
         self.corpus.remove(self.curr_word)
-        if debug_log:
+        if self.debug_log:
             print(f'{len(self.corpus)} left after this word.')
         return self.curr_word
 

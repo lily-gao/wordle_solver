@@ -1,3 +1,4 @@
+import random
 from ..wordle_solver.solvers import GreedyEntropySolver, Solver
 from ..wordle_solver.wordle import Wordle
 from ..wordle_solver.runners import Runner
@@ -16,6 +17,6 @@ class TestRunner:
         assert runner.init_best_guess in best_guesses
 
     def test_play_all(self):
-        runner = Runner()
+        runner = Runner(seed=0)
         nums_of_tries = runner.play_all()
         assert sum(nums_of_tries.values()) / len(nums_of_tries) <= 3.8

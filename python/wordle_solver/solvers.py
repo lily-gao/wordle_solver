@@ -9,6 +9,8 @@ class Solver(ABC):
         self.corpus = corpus if corpus else Solver.default_corpus()
         self.outcomes = outcomes if outcomes else Solver.all_outcomes((0, 1, 2), 5)
         self.debug_log = debug_log
+        if debug_log:
+            print('solver initialized with default corpus, num words:', len(self.corpus))
 
     @staticmethod
     def default_corpus():
@@ -17,10 +19,6 @@ class Solver(ABC):
             wordle_official_list = [line.strip() for line in f.readlines()]
         five_letter_words += [w for w in wordle_official_list if w not in five_letter_words]
         five_letter_words += ['tares']
-        num_words = len(five_letter_words)
-        num_bits_uncertainty = math.log(num_words, 2)
-        print('solver initialized with default corpus, num words:', num_words)
-        print('bits of info to uncover:', num_bits_uncertainty)
         return five_letter_words
 
     @staticmethod
@@ -44,6 +42,11 @@ class Solver(ABC):
 
 
 class EntropySolver(Solver, ABC):
+    def __init__(self, corpus=None, outcomes=None, debug_log=False):
+        super().__init__(corpus, outcomes, debug_log)
+        num_bits_uncertainty = math.log(len(self.corpus), 2)
+        print('bits of info to uncover:', num_bits_uncertainty)
+
     @abstractmethod
     def update_pool(self, guess, outcome):
         pass

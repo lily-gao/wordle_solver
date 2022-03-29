@@ -6,8 +6,8 @@ from .solvers import GreedyEntropySolver
 
 
 class Runner:
-    def __init__(self, corpus_name='five_letter_words', wordle=None, solver=None, debug_log=True):
-        self.wordle = wordle if wordle else Wordle()
+    def __init__(self, corpus_name='five_letter_words', wordle=None, solver=None, seed=None, debug_log=True):
+        self.wordle = wordle if wordle else Wordle(seed=seed, debug_log=debug_log)
         self.solver = solver if solver else GreedyEntropySolver(debug_log=debug_log)
         self.debug_log = debug_log
         self.entropies_file_prefix = f'./entropies/{corpus_name}'
@@ -35,7 +35,6 @@ class Runner:
         entropies = {}
         target = self.wordle.new_game()
         while target is not None:
-            # init_best_guess obtained previously over the whole corpus, does not change with target
             self.solver.reset()
             best_guess = self.init_best_guess
             guess_is_successful = False
@@ -53,7 +52,7 @@ class Runner:
                 else:
                     best_guess, guess_entropies = self.solver.get_best_guess()
                 entropies[(target, prev_guess, self.wordle.num_guesses)] = guess_entropies
-            target = self.wordle.new_game(debug_log=True)
+            target = self.wordle.new_game()
         with open(self.game_entropies_file, 'wb+') as f:
             pickle.dump(entropies, f)
         print('mean num tries', sum(nums_of_tries.values()) / len(nums_of_tries.values()))
