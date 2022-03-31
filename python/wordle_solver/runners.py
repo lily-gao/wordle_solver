@@ -8,6 +8,8 @@ from .solvers import GreedyEntropySolver
 class Runner:
     def __init__(self, corpus_name='five_letter_words', wordle=None, solver=None, seed=None, debug_log=True):
         self.wordle = wordle if wordle else Wordle(seed=seed, debug_log=debug_log)
+        if seed:
+            self.wordle.seed = seed
         self.solver = solver if solver else GreedyEntropySolver(debug_log=debug_log)
         self.debug_log = debug_log
         self.entropies_file_prefix = f'./entropies/{corpus_name}'
@@ -16,6 +18,48 @@ class Runner:
         self.init_entropies_file = f'{self.entropies_file_prefix}/init_entropies.pickle'
         self.game_entropies_file = f'{self.entropies_file_prefix}/game_entropies.pickle'
         self.init_best_guess = self.get_init_best_guess()
+
+    def play(self, target=None):
+        if not target:
+            target = self.wordle.new_game()
+            if not target:  # no more unseen words in wordle corpus
+                return None, None
+        else:
+            self.wordle.new_game(target=target)
+        entropies = {}
+        self.solver.reset()
+        best_guess = self.init_best_guess
+        guess_is_successful = False
+        while not guess_is_successful:
+            guess_is_successful, outcome = self.wordle.guess(best_guess)
+            print('TARGET: ', target, '| GUESS: ', best_guess, '| OUTCOME: ', outcome)
+            if guess_is_successful:
+                print('GOT IT!: ', self.wordle.num_guesses, 'tries')
+                break
+            self.solver.update_pool(best_guess, outcome)
+            prev_guess = best_guess  # for logging entropies only
+            if self.wordle.num_guesses == 1:
+                best_guess, guess_entropies = self.load_or_calculate_entropies(best_guess, outcome)
+            else:
+                best_guess, guess_entropies = self.solver.get_best_guess()
+            entropies[(target, prev_guess, self.wordle.num_guesses)] = guess_entropies
+        return target, entropies
+
+    def play_all(self):
+        nums_of_tries = {}
+        entropies = {}
+        target = ''
+        while target is not None:
+            target, target_entropies = self.play()
+            if target and target_entropies:
+                entropies.update(target_entropies)
+                nums_of_tries[target] = self.wordle.num_guesses
+        with open(self.game_entropies_file, 'wb+') as f:
+            pickle.dump(entropies, f)
+        print('mean num tries', sum(nums_of_tries.values()) / len(nums_of_tries.values()))
+        print('max, min num tries', max(nums_of_tries.values()), min(nums_of_tries.values()))
+        plt.hist(nums_of_tries.values(), bins=range(1, max(nums_of_tries.values()) + 2))
+        return nums_of_tries
 
     def get_init_best_guess(self):
         try:
@@ -29,36 +73,6 @@ class Runner:
             print('init entropies',
                   [(w, init_entropies[w]) for w in reversed(sorted(init_entropies, key=init_entropies.get))])
         return init_best_guess
-
-    def play_all(self):
-        nums_of_tries = {}
-        entropies = {}
-        target = self.wordle.new_game()
-        while target is not None:
-            self.solver.reset()
-            best_guess = self.init_best_guess
-            guess_is_successful = False
-            while not guess_is_successful:
-                guess_is_successful, outcome = self.wordle.guess(best_guess)
-                print('TARGET: ', target, '| GUESS: ', best_guess, '| OUTCOME: ', outcome)
-                if guess_is_successful:
-                    nums_of_tries[target] = self.wordle.num_guesses
-                    print('GOT IT!: ', self.wordle.num_guesses, 'tries')
-                    break  # not super necessary?
-                self.solver.update_pool(best_guess, outcome)
-                prev_guess = best_guess  # for logging entropies only
-                if self.wordle.num_guesses == 1:
-                    best_guess, guess_entropies = self.load_or_calculate_entropies(best_guess, outcome)
-                else:
-                    best_guess, guess_entropies = self.solver.get_best_guess()
-                entropies[(target, prev_guess, self.wordle.num_guesses)] = guess_entropies
-            target = self.wordle.new_game()
-        with open(self.game_entropies_file, 'wb+') as f:
-            pickle.dump(entropies, f)
-        print('mean num tries', sum(nums_of_tries.values()) / len(nums_of_tries.values()))
-        print('max, min num tries', max(nums_of_tries.values()), min(nums_of_tries.values()))
-        plt.hist(nums_of_tries.values(), bins=range(1, max(nums_of_tries.values()) + 2))
-        return nums_of_tries
 
     def load_or_calculate_entropies(self, guess, outcome):
         file_name = f'{self.entropies_file_prefix}/{guess}_{"".join([str(o) for o in outcome])}.pickle'

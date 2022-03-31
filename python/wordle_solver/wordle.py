@@ -11,14 +11,21 @@ class Wordle:
         self.seed = seed
         self.debug_log = debug_log
 
-    def new_game(self):
-        if not self.corpus:
+    def new_game(self, target=None):
+        if not self.corpus and not target:
+            self.curr_word = None
             return None
-        if self.seed is not None:
-            random.seed(self.seed)
-        self.curr_word = random.choice(self.corpus)
+        if not target:
+            if self.seed is not None:
+                random.seed(self.seed)
+            self.curr_word = random.choice(self.corpus)
+        else:
+            self.curr_word = target
+        try:
+            self.corpus.remove(self.curr_word)
+        except ValueError:
+            pass
         self.num_guesses = 0
-        self.corpus.remove(self.curr_word)
         if self.debug_log:
             print(f'{len(self.corpus)} left after this word.')
         return self.curr_word
