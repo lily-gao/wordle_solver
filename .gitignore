@@ -23,5 +23,4 @@ Pipfile.lock
 __pypackages__/
 
 # misc
-data/
 entropies/
