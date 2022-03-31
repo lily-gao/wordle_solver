@@ -64,4 +64,4 @@ class TestGreedyEntropySolver:
                 print('entropy out of bounds', entropy)
         assert len(more_than_one) == 0, f'words with probs > 1: {more_than_one}'
         assert len(less_than_one) == 0, f'words with probs < 1: {less_than_one}'
-        assert len(words_with_bad_entropies) == 0, f'words with out of bound entropies'
+        assert len(words_with_bad_entropies) == 0, 'words with out of bound entropies'
